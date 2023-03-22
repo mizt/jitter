@@ -37,15 +37,15 @@ t_jit_invert *jit_invert_new(void) {
     return x;
 }
 
-void jit_invert_calculate_ndim(t_jit_invert *x, long dimcount, long *dim, long planecount, t_jit_matrix_info *in_minfo, char *bip, t_jit_matrix_info *out_minfo, char *bop) {
+void jit_invert_calculate_ndim(t_jit_invert *x, long dimcount, long *dim, long planecount, t_jit_matrix_info *in_minfo,unsigned char *bip, t_jit_matrix_info *out_minfo,unsigned char *bop) {
         
     long width  = dim[0];
     long height = dim[1];
 
     for(long i=0; i<height; i++) {
         
-        unsigned char *ip = (unsigned char *)(bip+i*in_minfo->dimstride[1]);
-        unsigned char *op = (unsigned char *)(bop+i*out_minfo->dimstride[1]);
+        unsigned char *ip = bip+i*in_minfo->dimstride[1];
+        unsigned char *op = bop+i*out_minfo->dimstride[1];
 
         if(x->mode) {
             for(long j=0; j<width; j++) {
@@ -75,7 +75,7 @@ t_jit_err jit_invert_matrix_calc(t_jit_invert *x, void *inputs, void *outputs) {
     void *out_matrix = jit_object_method(outputs,_jit_sym_getindex,0);
 
     if(x&&in_matrix&&out_matrix) {
-        
+                
         in_savelock = (long)jit_object_method(in_matrix,_jit_sym_lock,1);
         out_savelock = (long)jit_object_method(out_matrix,_jit_sym_lock,1);
 
@@ -146,7 +146,7 @@ t_jit_err jit_invert_init() {
     jit_class_addadornment(_jit_invert_class,mop);
     jit_class_addmethod(_jit_invert_class,(method)jit_invert_matrix_calc,"matrix_calc",A_CANT,0);
     
-    long attrflags = JIT_ATTR_GET_DEFER_LOW | JIT_ATTR_SET_USURP_LOW;
+    long attrflags = JIT_ATTR_GET_DEFER_LOW|JIT_ATTR_SET_USURP_LOW;
     t_jit_object *attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"mode",_jit_sym_long,attrflags,(method)0,(method)0L,calcoffset(t_jit_invert,mode));
     jit_attr_addfilterset_clip(attr,0,1,TRUE,TRUE);
     jit_class_addattr(_jit_invert_class,attr);
