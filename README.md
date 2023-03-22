@@ -10,9 +10,8 @@ Change the extension to mxo.
 
 If only Invert.h is used, define matrix_info.
 ```
-typedef struct _matrix_info
-{
-	long dim[2];
-	long dimstride[2];
+typedef struct _matrix_info {
+    long dim[2];
+    long dimstride[2];
 } t_matrix_info;
 ```
