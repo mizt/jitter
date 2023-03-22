@@ -24,46 +24,30 @@ t_jit_invert *jit_invert_new(void) {
 }
 
 void jit_invert_calculate_ndim(t_jit_invert *x, long dimcount, long *dim, long planecount, t_jit_matrix_info *in_minfo, char *bip, t_jit_matrix_info *out_minfo, char *bop) {
-    
-    if(dimcount<1) {
-        return;
-    }
-    else if(dimcount==1) {
-        dim[1]=1;
-    }
-    else if(dimcount==2) {
         
-        long width  = dim[0];
-        long height = dim[1];
+    long width  = dim[0];
+    long height = dim[1];
 
-        for(long i=0; i<height; i++) {
-            
-            unsigned char *ip = (unsigned char *)(bip+i*in_minfo->dimstride[1]);
-            unsigned char *op = (unsigned char *)(bop+i*out_minfo->dimstride[1]);
+    for(long i=0; i<height; i++) {
+        
+        unsigned char *ip = (unsigned char *)(bip+i*in_minfo->dimstride[1]);
+        unsigned char *op = (unsigned char *)(bop+i*out_minfo->dimstride[1]);
 
-            if(x->mode) {
-                for(long j=0; j<width; j++) {
-                    *op++ = *ip++;
-                    *op++ = ~(*ip++);
-                    *op++ = ~(*ip++);
-                    *op++ = ~(*ip++);
-                }
-            }
-            else {
-                for(long j=0; j<width; j++) {
-                    *op++ = *ip++;
-                    *op++ = *ip++;
-                    *op++ = *ip++;
-                    *op++ = *ip++;
-                }
+        if(x->mode) {
+            for(long j=0; j<width; j++) {
+                *op++ = *ip++;
+                *op++ = ~(*ip++);
+                *op++ = ~(*ip++);
+                *op++ = ~(*ip++);
             }
         }
-    }
-    else {
-        for(long i=0; i<dim[dimcount-1]; i++) {
-            unsigned char *ip = (unsigned char *)(bip+i*in_minfo->dimstride[dimcount-1]);
-            unsigned char *op = (unsigned char *)(bop+i*out_minfo->dimstride[dimcount-1]);
-            jit_invert_calculate_ndim(x,dimcount-1,dim,planecount,in_minfo,(char *)ip,out_minfo,(char *)op);
+        else {
+            for(long j=0; j<width; j++) {
+                *op++ = *ip++;
+                *op++ = *ip++;
+                *op++ = *ip++;
+                *op++ = *ip++;
+            }
         }
     }
 }
@@ -72,27 +56,32 @@ t_jit_err jit_invert_matrix_calc(t_jit_invert *x, void *inputs, void *outputs) {
     
     t_jit_err err=JIT_ERR_NONE;
     long in_savelock,out_savelock;
-    t_jit_matrix_info in_minfo,out_minfo;
-    char *in_bp,*out_bp;
-    long i,dimcount,planecount,dim[JIT_MATRIX_MAX_DIMCOUNT];
-    void *in_matrix,*out_matrix;
 
-    in_matrix = jit_object_method(inputs,_jit_sym_getindex,0);
-    out_matrix = jit_object_method(outputs,_jit_sym_getindex,0);
+    void *in_matrix = jit_object_method(inputs,_jit_sym_getindex,0);
+    void *out_matrix = jit_object_method(outputs,_jit_sym_getindex,0);
 
-    if (x&&in_matrix&&out_matrix) {
+    if(x&&in_matrix&&out_matrix) {
         
-        in_savelock = (long) jit_object_method(in_matrix,_jit_sym_lock,1);
-        out_savelock = (long) jit_object_method(out_matrix,_jit_sym_lock,1);
+        in_savelock = (long)jit_object_method(in_matrix,_jit_sym_lock,1);
+        out_savelock = (long)jit_object_method(out_matrix,_jit_sym_lock,1);
 
+        t_jit_matrix_info in_minfo,out_minfo;
+        char *in_bp,*out_bp;
+        
         jit_object_method(in_matrix,_jit_sym_getinfo,&in_minfo);
         jit_object_method(out_matrix,_jit_sym_getinfo,&out_minfo);
 
         jit_object_method(in_matrix,_jit_sym_getdata,&in_bp);
         jit_object_method(out_matrix,_jit_sym_getdata,&out_bp);
 
-        if (!in_bp) { err=JIT_ERR_INVALID_INPUT; goto out;}
-        if (!out_bp) { err=JIT_ERR_INVALID_OUTPUT; goto out;}
+        if(!in_bp) {
+            err=JIT_ERR_INVALID_INPUT;
+            goto out;
+        }
+        if(!out_bp) {
+            err=JIT_ERR_INVALID_OUTPUT;
+            goto out;
+        }
 
         if((in_minfo.type!=_jit_sym_char)||(in_minfo.type!=out_minfo.type)) {
             err=JIT_ERR_MISMATCH_TYPE;
@@ -103,16 +92,23 @@ t_jit_err jit_invert_matrix_calc(t_jit_invert *x, void *inputs, void *outputs) {
             err=JIT_ERR_MISMATCH_PLANE;
             goto out;
         }
-
-        dimcount = out_minfo.dimcount;
-        planecount = out_minfo.planecount;
-        for (i=0; i<dimcount; i++) {
-            dim[i] = MIN(in_minfo.dim[i],out_minfo.dim[i]);
+        
+        if((in_minfo.dimcount!=2)||(out_minfo.dimcount!=2)) {
+            err=JIT_ERR_MISMATCH_DIM;
+            goto out;
         }
+        
+        long dimcount = out_minfo.dimcount;
+        long planecount = out_minfo.planecount;
+        
+        long dim[JIT_MATRIX_MAX_DIMCOUNT];
+        dim[0] = in_minfo.dim[0];
+        dim[1] = in_minfo.dim[1];
 
         jit_parallel_ndim_simplecalc2((method)jit_invert_calculate_ndim,x,dimcount,dim,planecount,&in_minfo,in_bp,&out_minfo,out_bp,0,0);
 
-    } else {
+    }
+    else {
         return JIT_ERR_INVALID_PTR;
     }
 
