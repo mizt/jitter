@@ -2,15 +2,15 @@ class Invert {
     
     private:
             
-        bool _mode = true;
+        long _mode = 0;
     
     public :
     
         Invert() {}
         ~Invert() {}
     
-        void mode(bool mode) {
-            this->_mode = mode;
+        void set(std::string key, void *value) {
+            if(key=="mode") this->_mode = *((long *)value);
         }
     
         void calc(unsigned char *bop, unsigned char *bip, long width, long height, long rowBytes) {

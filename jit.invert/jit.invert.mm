@@ -3,6 +3,7 @@
 #include "jit.common.h"
 #include "max.jit.mop.h"
 
+#include <string>
 #include "Invert.h"
 
 #define NAME "jit_invert"
@@ -107,7 +108,7 @@ t_jit_err jit_invert_matrix_calc(t_jit_invert *x, void *inputs, void *outputs) {
             goto out;
         }
         
-        x->invert->mode(x->mode);
+        x->invert->set("mode",(void *)(&x->mode));
         x->invert->calc(out_bp,in_bp,in_minfo.dim[0],in_minfo.dim[1],in_minfo.dimstride[1]);
     }
     else {
