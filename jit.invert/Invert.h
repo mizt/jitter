@@ -39,15 +39,7 @@ class Invert {
             }
             else {
                 
-                for(long i=0;i<height;i++) {
-
-                    unsigned int *src = bip+i*rowBytes;
-                    unsigned int *dst = bop+i*rowBytes;
-            
-                    for(long j=0; j<width; j++) {
-                        *dst++ = *src++;
-                    }
-                }
+                memcpy((void *)bop,(void *)bip,width*rowBytes*sizeof(unsigned int));
             }
         }
 };
