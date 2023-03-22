@@ -1,5 +1,9 @@
+#import <Cocoa/Cocoa.h>
+
 #include "jit.common.h"
 #include "max.jit.mop.h"
+
+#define MXO_NAME "jit_invert"
 
 typedef struct _jit_invert {
     t_object ob;
@@ -124,7 +128,7 @@ void jit_invert_free(t_jit_invert *x) {
 
 t_jit_err jit_invert_init() {
     
-    _jit_invert_class = jit_class_new("jit_invert",(method)jit_invert_new,(method)jit_invert_free,sizeof(t_jit_invert),0L);
+    _jit_invert_class = jit_class_new(MXO_NAME,(method)jit_invert_new,(method)jit_invert_free,sizeof(t_jit_invert),0L);
 
     t_jit_object *mop = (t_jit_object *)jit_object_new(_jit_sym_jit_mop,1,1);
     jit_mop_single_type(mop,_jit_sym_char);
@@ -145,15 +149,24 @@ t_jit_err jit_invert_init() {
 
 void *max_jit_invert_new(t_symbol *s, long argc, t_atom *argv) {
     
-    t_max_jit_invert *x = (t_max_jit_invert *)max_jit_obex_new(max_jit_invert_class,gensym("jit_invert"));
+    t_max_jit_invert *x = (t_max_jit_invert *)max_jit_obex_new(max_jit_invert_class,gensym(MXO_NAME));
     if(x) {
-        void *o = jit_object_new(gensym("jit_invert"));
+        void *o = jit_object_new(gensym(MXO_NAME));
         if(o) {
             max_jit_mop_setup_simple(x,o,argc,argv);
             max_jit_attr_args(x,argc,argv);
         }
         else {
-            jit_object_error((t_object *)x,"jit.invert: could not allocate object");
+            
+            NSMutableArray *arr = [[[NSString stringWithFormat:@"%s",MXO_NAME] componentsSeparatedByString:@"_"] mutableCopy];
+            
+            NSMutableString *str = [NSMutableString stringWithString:arr[0]];
+            for(int n=1; n<arr.count; n++) {
+                [str appendString:@"."];
+                [str appendString:arr[n]];
+            }
+            
+            jit_object_error((t_object *)x,(char *)[str UTF8String]);
             freeobject((t_object *) x);
             x = NULL;
         }
@@ -175,7 +188,7 @@ C74_EXPORT void ext_main(void *r) {
 		  0L,A_GIMME,0);
 
     void *p = max_jit_classex_setup(calcoffset(t_max_jit_invert,obex));
-    void *q = jit_class_findbyname(gensym("jit_invert"));
+    void *q = jit_class_findbyname(gensym(MXO_NAME));
 	max_jit_classex_mop_wrap(p,q,0);
 	max_jit_classex_standard_wrap(p,q,0);
 	addmess((method)max_jit_mop_assist,"assist",A_CANT,0);
