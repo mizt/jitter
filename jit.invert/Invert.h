@@ -13,10 +13,10 @@ class Invert {
             this->_mode = mode;
         }
     
-        void calc(long *dim, t_jit_matrix_info *in_minfo, unsigned char *bip, t_jit_matrix_info *out_minfo, unsigned char *bop) {
+        void calc(t_matrix_info *in_minfo, unsigned char *bip, t_matrix_info *out_minfo, unsigned char *bop) {
             
-            long width  = dim[0];
-            long height = dim[1];
+            long width  = out_minfo->dim[0];
+            long height = out_minfo->dim[1];
             
             if(this->_mode) {
                 
