@@ -13,17 +13,15 @@ class Invert {
             this->_mode = mode;
         }
     
-        void calc(t_matrix_info *in_minfo, unsigned char *bip, t_matrix_info *out_minfo, unsigned char *bop) {
+        void calc(unsigned char *bop, unsigned char *bip, long width, long height, long rowBytes) {
             
-            long width  = out_minfo->dim[0];
-            long height = out_minfo->dim[1];
             
             if(this->_mode) {
                 
                 for(long i=0;i<height;i++) {
 
-                    unsigned char *src = bip+i*in_minfo->dimstride[1];
-                    unsigned char *dst = bop+i*out_minfo->dimstride[1];
+                    unsigned char *src = bip+i*rowBytes;
+                    unsigned char *dst = bop+i*rowBytes;
             
                     for(long j=0; j<width; j++) {
                         *dst++ = *src++;
@@ -37,8 +35,8 @@ class Invert {
                 
                 for(long i=0;i<height;i++) {
 
-                    unsigned char *src = bip+i*in_minfo->dimstride[1];
-                    unsigned char *dst = bop+i*out_minfo->dimstride[1];
+                    unsigned char *src = bip+i*rowBytes;
+                    unsigned char *dst = bop+i*rowBytes;
             
                     for(long j=0; j<width; j++) {
                         *dst++ = *src++;
