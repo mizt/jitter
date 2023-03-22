@@ -3,7 +3,7 @@
 #include "jit.common.h"
 #include "max.jit.mop.h"
 
-#define MXO_NAME "jit_invert"
+#define NAME "jit_invert"
 
 typedef struct _jit_invert {
     t_object ob;
@@ -15,8 +15,18 @@ typedef struct _max_jit_invert {
     void *obex;
 } t_max_jit_invert;
 
-void *_jit_invert_class;
-t_messlist *max_jit_invert_class;
+static t_class *_jit_invert_class = NULL;
+static t_class *max_jit_invert_class = NULL;
+
+NSMutableString *jit_invert_mxo_name() {
+    NSMutableArray *arr = [[[NSString stringWithFormat:@"%s",NAME] componentsSeparatedByString:@"_"] mutableCopy];
+    NSMutableString *str = [NSMutableString stringWithString:arr[0]];
+    for(int n=1; n<arr.count; n++) {
+        [str appendString:@"."];
+        [str appendString:arr[n]];
+    }
+    return str;
+}
 
 t_jit_invert *jit_invert_new(void) {
     
@@ -128,16 +138,16 @@ void jit_invert_free(t_jit_invert *x) {
 
 t_jit_err jit_invert_init() {
     
-    _jit_invert_class = jit_class_new(MXO_NAME,(method)jit_invert_new,(method)jit_invert_free,sizeof(t_jit_invert),0L);
+    _jit_invert_class = (t_class *)jit_class_new(NAME,(method)jit_invert_new,(method)jit_invert_free, sizeof(t_jit_invert),0);
 
     t_jit_object *mop = (t_jit_object *)jit_object_new(_jit_sym_jit_mop,1,1);
     jit_mop_single_type(mop,_jit_sym_char);
     jit_mop_single_planecount(mop,4);
     jit_class_addadornment(_jit_invert_class,mop);
-    jit_class_addmethod(_jit_invert_class,(method)jit_invert_matrix_calc,"matrix_calc",A_CANT,0L);
+    jit_class_addmethod(_jit_invert_class,(method)jit_invert_matrix_calc,"matrix_calc",A_CANT,0);
     
     long attrflags = JIT_ATTR_GET_DEFER_LOW | JIT_ATTR_SET_USURP_LOW;
-    t_jit_object *attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"mode",_jit_sym_long,attrflags,(method)0L,(method)0L,calcoffset(t_jit_invert,mode));
+    t_jit_object *attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"mode",_jit_sym_long,attrflags,(method)0,(method)0L,calcoffset(t_jit_invert,mode));
     jit_attr_addfilterset_clip(attr,0,1,TRUE,TRUE);
     jit_class_addattr(_jit_invert_class,attr);
     object_addattr_parse(attr,"label",_jit_sym_symbol,0,"Mode");
@@ -149,22 +159,18 @@ t_jit_err jit_invert_init() {
 
 void *max_jit_invert_new(t_symbol *s, long argc, t_atom *argv) {
     
-    t_max_jit_invert *x = (t_max_jit_invert *)max_jit_obex_new(max_jit_invert_class,gensym(MXO_NAME));
+    t_max_jit_invert *x = (t_max_jit_invert *)max_jit_object_alloc(max_jit_invert_class,gensym(NAME));
+
     if(x) {
-        void *o = jit_object_new(gensym(MXO_NAME));
+        void *o = jit_object_new(gensym(NAME));
         if(o) {
             max_jit_mop_setup_simple(x,o,argc,argv);
             max_jit_attr_args(x,argc,argv);
         }
         else {
             
-            NSMutableArray *arr = [[[NSString stringWithFormat:@"%s",MXO_NAME] componentsSeparatedByString:@"_"] mutableCopy];
-            
-            NSMutableString *str = [NSMutableString stringWithString:arr[0]];
-            for(int n=1; n<arr.count; n++) {
-                [str appendString:@"."];
-                [str appendString:arr[n]];
-            }
+            NSMutableString *str = jit_invert_mxo_name();
+            [str appendString:@": could not allocate object"];
             
             jit_object_error((t_object *)x,(char *)[str UTF8String]);
             freeobject((t_object *) x);
@@ -178,18 +184,18 @@ void max_jit_invert_free(t_max_jit_invert *x) {
     
     max_jit_mop_free(x);
     jit_object_free(max_jit_obex_jitob_get(x));
-    max_jit_obex_free(x);
+    max_jit_object_free(x);
 }
 
 C74_EXPORT void ext_main(void *r) {
     
-	jit_invert_init();
-	setup(&max_jit_invert_class,(method)max_jit_invert_new,(method)max_jit_invert_free,(short)sizeof(t_max_jit_invert),
-		  0L,A_GIMME,0);
-
-    void *p = max_jit_classex_setup(calcoffset(t_max_jit_invert,obex));
-    void *q = jit_class_findbyname(gensym(MXO_NAME));
-	max_jit_classex_mop_wrap(p,q,0);
-	max_jit_classex_standard_wrap(p,q,0);
-	addmess((method)max_jit_mop_assist,"assist",A_CANT,0);
+    jit_invert_init();
+    t_class *max_class = class_new([jit_invert_mxo_name() UTF8String],(method)max_jit_invert_new,(method)max_jit_invert_free,sizeof(t_max_jit_invert),NULL,A_GIMME,0);
+    max_jit_class_obex_setup(max_class,calcoffset(t_max_jit_invert,obex));
+    t_class *jit_class = (t_class *)jit_class_findbyname(gensym(NAME));
+    max_jit_class_mop_wrap(max_class,jit_class,0);
+    max_jit_class_wrap_standard(max_class,jit_class,0);
+    class_addmethod(max_class,(method)max_jit_mop_assist,"assist",A_CANT,0);
+    class_register(CLASS_BOX,max_class);
+    max_jit_invert_class = max_class;
 }
