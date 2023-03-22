@@ -3,10 +3,13 @@
 #include "jit.common.h"
 #include "max.jit.mop.h"
 
+#include "Invert.h"
+
 #define NAME "jit_invert"
 
 typedef struct _jit_invert {
     t_object ob;
+    Invert *invert;
     long mode;
 } t_jit_invert;
 
@@ -15,8 +18,8 @@ typedef struct _max_jit_invert {
     void *obex;
 } t_max_jit_invert;
 
-static t_class *_jit_invert_class = NULL;
-static t_class *max_jit_invert_class = NULL;
+static t_class *_jit_invert_class = nullptr;
+static t_class *max_jit_invert_class = nullptr;
 
 NSMutableString *jit_invert_mxo_name() {
     NSMutableArray *arr = [[[NSString stringWithFormat:@"%s",NAME] componentsSeparatedByString:@"_"] mutableCopy];
@@ -32,37 +35,16 @@ t_jit_invert *jit_invert_new(void) {
     
     t_jit_invert *x = (t_jit_invert *)jit_object_alloc(_jit_invert_class);
     if(x) {
+        x->invert = new Invert();
         x->mode = 1;
     }
     return x;
 }
 
-void jit_invert_calculate_ndim(t_jit_invert *x, long dimcount, long *dim, long planecount, t_jit_matrix_info *in_minfo,unsigned char *bip, t_jit_matrix_info *out_minfo,unsigned char *bop) {
-        
-    long width  = dim[0];
-    long height = dim[1];
-
-    for(long i=0; i<height; i++) {
-        
-        unsigned char *ip = bip+i*in_minfo->dimstride[1];
-        unsigned char *op = bop+i*out_minfo->dimstride[1];
-
-        if(x->mode) {
-            for(long j=0; j<width; j++) {
-                *op++ = *ip++;
-                *op++ = ~(*ip++);
-                *op++ = ~(*ip++);
-                *op++ = ~(*ip++);
-            }
-        }
-        else {
-            for(long j=0; j<width; j++) {
-                *op++ = *ip++;
-                *op++ = *ip++;
-                *op++ = *ip++;
-                *op++ = *ip++;
-            }
-        }
+void jit_invert_free(t_jit_invert *x) {
+    if(x&&x->invert) {
+        delete x->invert;
+        x->invert = nullptr;
     }
 }
 
@@ -79,13 +61,16 @@ t_jit_err jit_invert_matrix_calc(t_jit_invert *x, void *inputs, void *outputs) {
         in_savelock = (long)jit_object_method(in_matrix,_jit_sym_lock,1);
         out_savelock = (long)jit_object_method(out_matrix,_jit_sym_lock,1);
 
-        t_jit_matrix_info in_minfo,out_minfo;
-        char *in_bp,*out_bp;
+        t_jit_matrix_info in_minfo;
+        unsigned char *in_bp;
         
         jit_object_method(in_matrix,_jit_sym_getinfo,&in_minfo);
-        jit_object_method(out_matrix,_jit_sym_getinfo,&out_minfo);
-
         jit_object_method(in_matrix,_jit_sym_getdata,&in_bp);
+
+        t_jit_matrix_info out_minfo;
+        unsigned char *out_bp;
+        
+        jit_object_method(out_matrix,_jit_sym_getinfo,&out_minfo);
         jit_object_method(out_matrix,_jit_sym_getdata,&out_bp);
 
         if(!in_bp) {
@@ -112,15 +97,12 @@ t_jit_err jit_invert_matrix_calc(t_jit_invert *x, void *inputs, void *outputs) {
             goto out;
         }
         
-        long dimcount = out_minfo.dimcount;
-        long planecount = out_minfo.planecount;
-        
         long dim[JIT_MATRIX_MAX_DIMCOUNT];
         dim[0] = in_minfo.dim[0];
         dim[1] = in_minfo.dim[1];
-
-        jit_parallel_ndim_simplecalc2((method)jit_invert_calculate_ndim,x,dimcount,dim,planecount,&in_minfo,in_bp,&out_minfo,out_bp,0,0);
-
+        
+        x->invert->mode(x->mode);
+        x->invert->calc(dim,&in_minfo,in_bp,&out_minfo,out_bp);
     }
     else {
         return JIT_ERR_INVALID_PTR;
@@ -131,9 +113,6 @@ out:
     jit_object_method(out_matrix,_jit_sym_lock,out_savelock);
     jit_object_method(in_matrix,_jit_sym_lock,in_savelock);
     return err;
-}
-
-void jit_invert_free(t_jit_invert *x) {
 }
 
 t_jit_err jit_invert_init() {
