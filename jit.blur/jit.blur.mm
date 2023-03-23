@@ -11,7 +11,8 @@
     #define BGRA
 #endif
 
-#include "Blur.h"
+#import "Utils.h"
+#import "Blur.h"
 
 #define NAME "jit_blur"
 
@@ -28,16 +29,6 @@ typedef struct _max_jit_blur {
 
 static t_class *_jit_blur_class = nullptr;
 static t_class *max_jit_blur_class = nullptr;
-
-NSMutableString *jit_blur_mxo_name() {
-    NSMutableArray *arr = [[[NSString stringWithFormat:@"%s",NAME] componentsSeparatedByString:@"_"] mutableCopy];
-    NSMutableString *str = [NSMutableString stringWithString:arr[0]];
-    for(int n=1; n<arr.count; n++) {
-        [str appendString:@"."];
-        [str appendString:arr[n]];
-    }
-    return str;
-}
 
 t_jit_blur *jit_blur_new(void) {
     
@@ -59,53 +50,68 @@ void jit_blur_free(t_jit_blur *x) {
 t_jit_err jit_blur_matrix_calc(t_jit_blur *x, void *inputs, void *outputs) {
     
     t_jit_err err=JIT_ERR_NONE;
-    long in_savelock,out_savelock;
+ 
+    const unsigned int IN = 0;
+    const unsigned int OUT = 1;
+    const unsigned int NUM = 2;
 
-    void *in_matrix = jit_object_method(inputs,_jit_sym_getindex,0);
-    void *out_matrix = jit_object_method(outputs,_jit_sym_getindex,0);
+    long savelock[NUM] = {0,0};
 
-    if(x&&in_matrix&&out_matrix) {
+    void *matrix[NUM] = {
+        jit_object_method(inputs,_jit_sym_getindex,0),
+        jit_object_method(outputs,_jit_sym_getindex,0)
+    };
+
+    if(x&&matrix[IN]&&matrix[OUT]) {
                 
-        in_savelock = (long)jit_object_method(in_matrix,_jit_sym_lock,1);
-        out_savelock = (long)jit_object_method(out_matrix,_jit_sym_lock,1);
+        savelock[IN] = (long)jit_object_method(matrix[IN],_jit_sym_lock,1);
+        savelock[OUT] = (long)jit_object_method(matrix[OUT],_jit_sym_lock,1);
 
-        t_jit_matrix_info in_minfo;
-        unsigned char *in_bp;
+        t_jit_matrix_info minfo[NUM];
+        unsigned char *bp[NUM];
         
-        jit_object_method(in_matrix,_jit_sym_getinfo,&in_minfo);
-        jit_object_method(in_matrix,_jit_sym_getdata,&in_bp);
-
-        t_jit_matrix_info out_minfo;
-        unsigned char *out_bp;
-        
-        jit_object_method(out_matrix,_jit_sym_getinfo,&out_minfo);
-        jit_object_method(out_matrix,_jit_sym_getdata,&out_bp);
-
-        if(!in_bp) {
-            err=JIT_ERR_INVALID_INPUT;
-            goto out;
-        }
-        if(!out_bp) {
-            err=JIT_ERR_INVALID_OUTPUT;
-            goto out;
-        }
-
-        if((in_minfo.type!=_jit_sym_char)||(in_minfo.type!=out_minfo.type)) {
-            err=JIT_ERR_MISMATCH_TYPE;
-            goto out;
-        }
-
-        if((in_minfo.planecount!=4)||(out_minfo.planecount!=4)) {
-            err=JIT_ERR_MISMATCH_PLANE;
-            goto out;
+        for(int n=0; n<NUM; n++) {
+                
+            jit_object_method(matrix[n],_jit_sym_getinfo,&minfo[n]);
+            jit_object_method(matrix[n],_jit_sym_getdata,&bp[n]);
+            
+            if(!bp[n]) {
+                err=(n==OUT)?JIT_ERR_INVALID_OUTPUT:JIT_ERR_INVALID_INPUT;
+                goto out;
+            }
+            
+            if((minfo[n].type!=_jit_sym_char)) {
+                err=JIT_ERR_MISMATCH_TYPE;
+                goto out;
+            }
+            
+            if((minfo[n].planecount!=4)) {
+                err=JIT_ERR_MISMATCH_PLANE;
+                goto out;
+            }
+            
+            if((minfo[n].dimcount!=2)) {
+                err=JIT_ERR_MISMATCH_DIM;
+                goto out;
+            }
         }
         
-        if((in_minfo.dimcount!=2)||(out_minfo.dimcount!=2)) {
+        if(!isEqualWidth(&minfo[IN],&minfo[OUT])) {
             err=JIT_ERR_MISMATCH_DIM;
             goto out;
         }
         
-        x->blur->calc((unsigned int *)out_bp,(unsigned int *)in_bp,in_minfo.dim[0],in_minfo.dim[1],in_minfo.dimstride[1]>>2);
+        if(!isEqualHeight(&minfo[IN],&minfo[OUT])) {
+            err=JIT_ERR_MISMATCH_DIM;
+            goto out;
+        }
+        
+        if(!isEqualRowBytes(&minfo[IN],&minfo[OUT])) {
+            err=JIT_ERR_MISMATCH_DIM;
+            goto out;
+        }
+        
+        x->blur->calc((unsigned int *)bp[OUT],(unsigned int *)bp[IN],minfo[IN].dim[0],minfo[IN].dim[1],minfo[IN].dimstride[1]>>2);
     }
     else {
         return JIT_ERR_INVALID_PTR;
@@ -113,8 +119,8 @@ t_jit_err jit_blur_matrix_calc(t_jit_blur *x, void *inputs, void *outputs) {
 
 out:
     
-    jit_object_method(out_matrix,_jit_sym_lock,out_savelock);
-    jit_object_method(in_matrix,_jit_sym_lock,in_savelock);
+    jit_object_method(matrix[OUT],_jit_sym_lock,savelock[OUT]);
+    jit_object_method(matrix[IN],_jit_sym_lock,savelock[IN]);
     return err;
 }
 
@@ -159,7 +165,7 @@ void *max_jit_blur_new(t_symbol *s, long argc, t_atom *argv) {
         }
         else {
             
-            NSMutableString *str = jit_blur_mxo_name();
+            NSMutableString *str = mxo_name(NAME);
             [str appendString:@": could not allocate object"];
             
             jit_object_error((t_object *)x,(char *)[str UTF8String]);
@@ -180,7 +186,7 @@ void max_jit_blur_free(t_max_jit_blur *x) {
 C74_EXPORT void ext_main(void *r) {
     
     jit_blur_init();
-    t_class *max_class = class_new([jit_blur_mxo_name() UTF8String],(method)max_jit_blur_new,(method)max_jit_blur_free,sizeof(t_max_jit_blur),NULL,A_GIMME,0);
+    t_class *max_class = class_new([mxo_name(NAME) UTF8String],(method)max_jit_blur_new,(method)max_jit_blur_free,sizeof(t_max_jit_blur),NULL,A_GIMME,0);
     max_jit_class_obex_setup(max_class,calcoffset(t_max_jit_blur,obex));
     t_class *jit_class = (t_class *)jit_class_findbyname(gensym(NAME));
     max_jit_class_mop_wrap(max_class,jit_class,0);
