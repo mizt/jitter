@@ -135,7 +135,7 @@ t_jit_err jit_blur_init() {
     jit_class_addadornment(_jit_blur_class,mop);
     jit_class_addmethod(_jit_blur_class,(method)jit_blur_matrix_calc,"matrix_calc",A_CANT,0);
         
-    long attrflags = JIT_ATTR_GET_OPAQUE_USER | JIT_ATTR_SET_USURP_LOW;
+    long attrflags = JIT_ATTR_GET_OPAQUE_USER|JIT_ATTR_SET_USURP_LOW;
     t_jit_object *attr = (t_jit_object *)jit_object_new(_jit_sym_jit_attr_offset,"radius",_jit_sym_long,attrflags,
                               (method)0L,(method)jit_blur_radius,calcoffset(t_jit_blur,radius));
     jit_class_addattr(_jit_blur_class,attr);

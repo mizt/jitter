@@ -417,7 +417,8 @@ class Blur {
             }
             else {
                 
-                memcpy((void *)bop,(void *)bip,width*rowBytes*sizeof(unsigned int));
+                memcpy((void *)bop,(void *)bip,rowBytes*height*sizeof(unsigned int));
+
             }
         }
 };
