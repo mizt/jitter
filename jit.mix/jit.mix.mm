@@ -9,7 +9,8 @@
     #define BGRA
 #endif
 
-#include "Mix.h"
+#import "Utils.h"
+#import "Mix.h"
 
 #define NAME "jit_mix"
 
@@ -26,16 +27,6 @@ typedef struct _max_jit_mix {
 
 static t_class *_jit_mix_class = nullptr;
 static t_class *max_jit_mix_class = nullptr;
-
-NSMutableString *jit_mix_mxo_name() {
-    NSMutableArray *arr = [[[NSString stringWithFormat:@"%s",NAME] componentsSeparatedByString:@"_"] mutableCopy];
-    NSMutableString *str = [NSMutableString stringWithString:arr[0]];
-    for(int n=1; n<arr.count; n++) {
-        [str appendString:@"."];
-        [str appendString:arr[n]];
-    }
-    return str;
-}
 
 t_jit_mix *jit_mix_new(void) {
     
@@ -105,17 +96,17 @@ t_jit_err jit_mix_matrix_calc(t_jit_mix *x, void *inputs, void *outputs) {
             }
         }
         
-        if((minfo[IN1].dim[0]!=minfo[OUT].dim[0])||(minfo[IN1].dim[0]!=minfo[IN2].dim[0])) {
+        if((!isEqualWidth(&minfo[IN1],&minfo[IN2],&minfo[OUT]))) {
+            err=JIT_ERR_MISMATCH_DIM;
+            goto out;
+        }
+           
+        if((!isEqualHeight(&minfo[IN1],&minfo[IN2]))||(!isEqualHeight(&minfo[IN1],&minfo[OUT]))) {
             err=JIT_ERR_MISMATCH_DIM;
             goto out;
         }
         
-        if((minfo[IN1].dim[1]!=minfo[OUT].dim[1])||(minfo[IN1].dim[1]!=minfo[IN2].dim[1])) {
-            err=JIT_ERR_MISMATCH_DIM;
-            goto out;
-        }
-        
-        if((minfo[IN1].dimstride[1]!=minfo[OUT].dimstride[1])||(minfo[IN1].dimstride[1]!=minfo[IN2].dimstride[1])) {
+        if((!isEqualRowBytes(&minfo[IN1],&minfo[IN2]))||(!isEqualRowBytes(&minfo[IN1],&minfo[OUT]))) {
             err=JIT_ERR_MISMATCH_DIM;
             goto out;
         }
@@ -175,7 +166,7 @@ void *max_jit_mix_new(t_symbol *s, long argc, t_atom *argv) {
         }
         else {
             
-            NSMutableString *str = jit_mix_mxo_name();
+            NSMutableString *str = mxo_name(NAME);
             [str appendString:@": could not allocate object"];
             
             jit_object_error((t_object *)x,(char *)[str UTF8String]);
@@ -196,7 +187,7 @@ void max_jit_mix_free(t_max_jit_mix *x) {
 C74_EXPORT void ext_main(void *r) {
     
     jit_mix_init();
-    t_class *max_class = class_new([jit_mix_mxo_name() UTF8String],(method)max_jit_mix_new,(method)max_jit_mix_free,sizeof(t_max_jit_mix),NULL,A_GIMME,0);
+    t_class *max_class = class_new([mxo_name(NAME) UTF8String],(method)max_jit_mix_new,(method)max_jit_mix_free,sizeof(t_max_jit_mix),NULL,A_GIMME,0);
     max_jit_class_obex_setup(max_class,calcoffset(t_max_jit_mix,obex));
     t_class *jit_class = (t_class *)jit_class_findbyname(gensym(NAME));
     max_jit_class_mop_wrap(max_class,jit_class,0);
