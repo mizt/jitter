@@ -1,3 +1,5 @@
+#import <algorithm>
+
 NSMutableString *mxo_name(const char *name) {
     NSMutableArray *arr = [[[NSString stringWithFormat:@"%s",name] componentsSeparatedByString:@"_"] mutableCopy];
     NSMutableString *str = [NSMutableString stringWithString:arr[0]];
@@ -30,4 +32,12 @@ bool isEqualRowBytes(t_jit_matrix_info *a, t_jit_matrix_info *b) {
 
 bool isEqualRowBytes(t_jit_matrix_info *a, t_jit_matrix_info *b, t_jit_matrix_info *c) {
     return isEqualRowBytes(a,b)&&isEqualRowBytes(a,c);
+}
+
+long toU64(void *v) {
+    return *((long *)v);
+}
+
+float toF32(void *v) {
+    return *((float *)v);
 }
