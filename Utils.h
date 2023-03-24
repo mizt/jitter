@@ -34,10 +34,6 @@ bool isEqualRowBytes(t_jit_matrix_info *a, t_jit_matrix_info *b, t_jit_matrix_in
     return isEqualRowBytes(a,b)&&isEqualRowBytes(a,c);
 }
 
-long toU64(void *v) {
-    return *((long *)v);
-}
-
-float toF32(void *v) {
-    return *((float *)v);
-}
+#define toPointer(v) ((void *)(&v))
+#define toU64(v) (*((long *)v))
+#define toF32(v) (*((float *)v))
